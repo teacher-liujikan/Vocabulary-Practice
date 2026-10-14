@@ -109,8 +109,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .bub.wrong{border-color:var(--bad);animation:shake .3s}
 .target{text-align:center;font-family:var(--en);font-size:2.4rem;font-weight:400;margin:0}
 .big{font-size:1.4rem;text-align:center;margin:0}
+.face{width:1.7em;height:1.7em;vertical-align:middle;overflow:visible;display:inline-block}
+.bub .face{width:1.2em;height:1.2em}
+.pbtn .face{width:1.4em;height:1.4em}
+.who .face{width:1.45em;height:1.45em}
+.quiz .pic .face{width:1.4em;height:1.4em}
 .gbody{display:grid;gap:14px}
-.gtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.gtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .gtab{font:inherit;font-weight:700;font-size:.95rem;padding:10px 6px;border-radius:12px;border:2px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;display:grid;justify-items:center;gap:2px}
 .gtab .ic{font-size:1.7rem;line-height:1.1}
 .gtab[aria-pressed="true"]{border-color:var(--cyan);background:var(--cyan-bg);color:var(--cyan)}
@@ -224,9 +229,19 @@ button:disabled{opacity:.45;cursor:not-allowed}
     </div>
   </section>
 
+  <section id="so" class="locked">
+    <h2><span class="badge">3</span>字母排排站</h2>
+    <p class="lockmsg" id="locko">🔒 5 個字都描寫完才能開始。</p>
+    <div id="sobody" class="gbody" hidden>
+      <p class="hint">看圖聽發音，照順序點字母，把單字排在四線格上。5 個字都要一次排對才能過關喔！</p>
+      <div id="obox"></div>
+      <div class="row"><span class="meter" id="oscore"></span></div>
+    </div>
+  </section>
+
   <section id="sq" class="locked">
-    <h2><span class="badge">3</span>句型問答</h2>
-    <p class="lockmsg" id="lockq">🔒 5 個字都寫對才能開始。</p>
+    <h2><span class="badge">4</span>句型問答</h2>
+    <p class="lockmsg" id="lockq">🔒 通過第 3 關字母排排站才能開始。</p>
     <div id="sqbody" class="gbody" hidden>
       <div class="pattern">
         <div class="pq"><button class="say" data-say="q_hungry" aria-label="聽問句">🔊</button>Are you <b>hungry</b>?</div>
@@ -240,8 +255,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </section>
 
   <section id="s3" class="locked">
-    <h2><span class="badge">4</span>遊戲區</h2>
-    <p class="lockmsg" id="lock3">🔒 通過第 3 關句型問答才會打開遊戲。</p>
+    <h2><span class="badge">5</span>遊戲區</h2>
+    <p class="lockmsg" id="lock3">🔒 通過第 4 關句型問答才會打開遊戲。</p>
     <div id="s3body" class="gbody" hidden>
       <div class="gtabs" id="gtabs" role="group" aria-label="選遊戲"></div>
       <p class="hint" id="gintro"></p>
@@ -254,12 +269,53 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 
 <script>
+/* Original textbook-style kid faces (inline SVG, sized by font-size) */
+const FACE=(()=>{
+  const O='#4a3226',SK='#ffdcc0',CH='#ff9e9e';
+  const svg=(body,label)=>`<svg class="face" viewBox="0 0 100 100" role="img" aria-label="${label}" >${body}</svg>`;
+  const head=(extra='')=>`<path d="M14 100 Q50 74 86 100Z" fill="var(--shirt)" stroke="${O}" stroke-width="2.5"/>
+    <circle cx="21" cy="56" r="7" fill="${SK}" stroke="${O}" stroke-width="2.5"/><circle cx="79" cy="56" r="7" fill="${SK}" stroke="${O}" stroke-width="2.5"/>
+    <circle cx="50" cy="54" r="29" fill="${SK}" stroke="${O}" stroke-width="2.5"/>${extra}
+    <ellipse cx="33" cy="64" rx="6" ry="4" fill="${CH}" opacity=".75"/><ellipse cx="67" cy="64" rx="6" ry="4" fill="${CH}" opacity=".75"/>`;
+  const S=`stroke="${O}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"`;
+  const dots=`<circle cx="40" cy="55" r="3.4" fill="${O}"/><circle cx="60" cy="55" r="3.4" fill="${O}"/>`;
+  const wrap=(shirt,inner,label)=>svg(`<g style="--shirt:${shirt}">${inner}</g>`,label);
+  return{
+    angry:wrap('#e2463c',head(`<path d="M20 52 Q17 22 50 21 Q83 22 80 52 Q76 34 64 35 L60 28 L54 35 L46 27 L41 35 L34 29 L30 38 Q22 40 20 52Z" fill="#2d211b" ${S}/>`)+
+      `<path d="M33 45 L45 50 M67 45 L55 50" ${S} fill="none"/>`+dots+
+      `<rect x="39" y="66" width="22" height="9" rx="3" fill="#fff" ${S}/><path d="M44.5 66 V75 M50 66 V75 M55.5 66 V75" stroke="${O}" stroke-width="1.6"/>`+
+      `<path d="M78 22 l6 -6 M84 26 l8 -2 M76 15 l1 -8" stroke="#e2463c" stroke-width="3" stroke-linecap="round"/>`,'生氣的小朋友'),
+    happy:wrap('#4aa3df',`<circle cx="15" cy="44" r="10" fill="#2d211b" ${S}/><circle cx="85" cy="44" r="10" fill="#2d211b" ${S}/><circle cx="22" cy="40" r="3" fill="#ff7aa8"/><circle cx="78" cy="40" r="3" fill="#ff7aa8"/>`+
+      head(`<path d="M21 50 Q20 24 50 23 Q80 24 79 50 Q70 36 50 38 Q30 36 21 50Z" fill="#2d211b" ${S}/>`)+
+      `<path d="M34 55 Q40 48 46 55 M54 55 Q60 48 66 55" ${S} fill="none"/>`+
+      `<path d="M38 64 Q50 64 62 64 Q60 78 50 78 Q40 78 38 64Z" fill="#c9423a" ${S}/><path d="M43 73 Q50 70 57 73 Q54 77 50 77 Q46 77 43 73Z" fill="#ff8f8f"/>`,'開心的小朋友'),
+    sad:wrap('#f2b33d',head(`<path d="M20 54 Q14 22 50 20 Q86 22 80 54 Q78 40 70 36 Q66 42 58 38 Q52 44 44 38 Q36 43 30 37 Q22 42 20 54Z" fill="#9a5b2c" ${S}/>`)+
+      `<path d="M33 47 L44 44 M67 47 L56 44" ${S} fill="none"/>`+dots+
+      `<path d="M41 73 Q50 64 59 73" ${S} fill="none"/>`+
+      `<path d="M37 60 Q33 68 37 72 Q41 68 37 60Z" fill="#6cc4f0" stroke="#2f8fc8" stroke-width="1.5"/>`,'難過的小朋友'),
+    hungry:wrap('#ff8fb3',`<ellipse cx="50" cy="60" rx="35" ry="34" fill="#e9b04a" ${S}/>`+
+      head(`<path d="M21 52 Q20 24 50 23 Q80 24 79 52 Q74 38 62 37 Q56 44 50 37 Q42 44 34 37 Q24 40 21 52Z" fill="#e9b04a" ${S}/>`)+
+      `<path d="M35 51 Q40 47 45 51 M55 51 Q60 47 65 51" ${S} fill="none"/><circle cx="40" cy="56" r="3" fill="${O}"/><circle cx="60" cy="56" r="3" fill="${O}"/>`+
+      `<ellipse cx="50" cy="69" rx="7" ry="6" fill="#c9423a" ${S}/><path d="M54 72 Q56 78 54 82" stroke="#6cc4f0" stroke-width="3" stroke-linecap="round" fill="none"/>`+
+      `<g transform="translate(64 78)"><path d="M0 8 Q0 -2 14 -2 Q28 -2 28 8Z" fill="#e7a24a" ${S}/><rect x="-1" y="8" width="30" height="4" rx="2" fill="#6bbf4e" stroke="${O}" stroke-width="2"/><rect x="0" y="12" width="28" height="5" rx="2" fill="#8a4a2a" stroke="${O}" stroke-width="2"/><path d="M0 17 H28 Q28 23 14 23 Q0 23 0 17Z" fill="#e7a24a" ${S}/><circle cx="9" cy="3" r="1" fill="#fff"/><circle cx="16" cy="1.5" r="1" fill="#fff"/></g>`,'肚子餓的小朋友'),
+    thirsty:wrap('#6bbf4e',head(`<path d="M20 52 Q18 22 50 20 Q82 22 80 52 L74 38 L68 30 L60 36 L54 26 L46 35 L38 27 L33 37 L26 34 Z" fill="#2d211b" ${S}/>`)+
+      `<path d="M35 55 Q40 51 45 55 M55 55 Q60 51 65 55" ${S} fill="none"/>`+
+      `<circle cx="51" cy="70" r="4" fill="#c9423a" ${S}/>`+
+      `<g transform="translate(53 70) rotate(-130)"><rect x="-7" y="5" width="14" height="30" rx="5" fill="#bfe8fb" fill-opacity=".95" ${S}/><rect x="-4.5" y="-1" width="9" height="7" rx="2" fill="#3a8fd9" ${S}/><path d="M-7 16 H7" stroke="#3a8fd9" stroke-width="2"/></g>`+
+      `<path d="M27 35 Q23 42 27 46 Q31 42 27 35Z" fill="#6cc4f0" stroke="#2f8fc8" stroke-width="1.5"/>`,'口渴的小朋友'),
+    teacher:wrap('#8a6fd1',`<circle cx="50" cy="20" r="11" fill="#5a3a2a" ${S}/><ellipse cx="50" cy="58" rx="33" ry="30" fill="#5a3a2a" ${S}/>`+
+      head(`<path d="M21 54 Q20 26 50 25 Q80 26 79 54 Q72 34 50 40 Q30 34 21 54Z" fill="#5a3a2a" ${S}/>`)+
+      `<circle cx="40" cy="55" r="7" fill="none" ${S}/><circle cx="60" cy="55" r="7" fill="none" ${S}/><path d="M47 55 H53" ${S}/>`+dots+
+      `<path d="M42 68 Q50 75 58 68" ${S} fill="none"/>`,'老師')
+  };
+})();
+
 const WORDS=[
-  {en:"angry",zh:"生氣的",pic:"😠"},
-  {en:"happy",zh:"快樂的",pic:"😄"},
-  {en:"sad",zh:"難過的",pic:"😢"},
-  {en:"hungry",zh:"餓的",pic:"🤤🍔"},
-  {en:"thirsty",zh:"口渴的",pic:"🥵💧"}
+  {en:"angry",zh:"生氣的",pic:FACE.angry},
+  {en:"happy",zh:"快樂的",pic:FACE.happy},
+  {en:"sad",zh:"難過的",pic:FACE.sad},
+  {en:"hungry",zh:"餓的",pic:FACE.hungry},
+  {en:"thirsty",zh:"口渴的",pic:FACE.thirsty}
 ];
 const $=id=>document.getElementById(id);
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -295,7 +351,7 @@ function tts(w){try{const u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rat
 let stage=1;
 
 function renderSteps(){
-  const names=["背單字","寫進格子","句型問答","遊戲區"];
+  const names=["背單字","寫進格子","字母排排站","句型問答","遊戲區"];
   $("steps").innerHTML=names.map((n,i)=>{const k=i+1;const c=k<stage?"done":k===stage?"on":"";return `<span class="step ${c}">${k<stage?"✔":k===stage?"✏️":"🔒"} ${n}</span>`}).join("");
 }
 
@@ -481,7 +537,6 @@ $("check").onclick=async()=>{
 const GAMES=[
   {id:"zombie",ic:"🧟",name:"打殭屍",intro:"殭屍會從土裡冒出來，舉著單字牌！看上面的圖、聽發音，點舉著對的單字的殭屍。點錯會扣一顆愛心，5 顆扣完就輸了。打倒 10 隻就贏！",run:gZombie},
   {id:"match",ic:"🃏",name:"翻卡配對",intro:"翻開兩張卡，圖片和單字配成一對就留著。用越少次翻完越厲害！",run:gMatch},
-  {id:"order",ic:"🔤",name:"字母排排站",intro:"看圖聽發音，照順序點字母，把單字排在四線格上。",run:gOrder},
   {id:"bubble",ic:"🫧",name:"泡泡點點",intro:"看單字、聽發音，點出對的表情泡泡！共 10 題。",run:gBubble},
   {id:"listen",ic:"👂",name:"聽音找圖",intro:"這次只有聲音沒有字！聽完點出對的圖片，共 10 題。",run:gListen}
 ];
@@ -523,23 +578,31 @@ function gMatch(){
 }
 
 /* 字母排排站 */
-function gOrder(){
-  const q=shuffle(WORDS);let idx=0,miss=0;
+/* 第 3 關：字母排排站 — all 5 words, no wrong taps, to pass */
+let oGen=0;
+function orderStage(){
+  const g=++oGen,q=shuffle(WORDS);let idx=0,miss=0;const box=$("obox");
+  const live=()=>g===oGen;
   function scramble(w){let t;do{t=shuffle([...w])}while(t.join("")===w);return t}
+  function score(){$("oscore").textContent=`第 ${Math.min(idx+1,5)} / 5 個 · 點錯 ${miss} 次`}
   function show(){
-    if(idx>=q.length){finish(miss===0?3:miss<=3?2:1,miss===0?"5 個單字一次都沒排錯！":`排完 5 個單字，點錯 ${miss} 次。`);return}
-    const w=q[idx];let pos=0;
-    $("score").textContent=`第 ${idx+1} / 5 個 · 點錯 ${miss} 次`;
-    $("game").innerHTML=`<div class="ostage"><div class="opic">${w.pic}</div><div class="ozh">${w.zh}<button class="say" aria-label="聽發音" id="osay">🔊</button></div>
+    if(!live())return;
+    if(idx>=q.length){
+      $("oscore").textContent="";
+      if(miss){box.innerHTML=`<div class="done"><p class="big">排完了！但點錯 ${miss} 次，要一次都不點錯才能過關喔！</p><button class="btn" id="oagain">再挑戰一次</button></div>`;$("oagain").onclick=orderStage}
+      else{box.innerHTML=`<div class="done"><p class="stars">⭐⭐⭐</p><p class="big">5 個單字都排對了！下一關打開了，往下滑</p></div>`;unlock(4)}
+      return}
+    const w=q[idx];let pos=0;score();
+    box.innerHTML=`<div class="ostage"><div class="opic">${w.pic}</div><div class="ozh">${w.zh}<button class="say" aria-label="聽發音" id="osay">🔊</button></div>
       <div class="ruled sline oline" id="oline">${[...w.en].map(()=>`<span class="cell"><span class="g"> </span></span>`).join("")}</div>
       <div class="tiles">${scramble(w.en).map(c=>`<button class="tile" data-c="${c}">${c}</button>`).join("")}</div></div>`;
     $("osay").onclick=()=>say(w.en);
     const cells=[...$("oline").querySelectorAll(".g")];
-    $("game").querySelectorAll(".tile").forEach(t=>t.onclick=()=>{
-      if(pos>=w.en.length||t.classList.contains("used"))return;
+    box.querySelectorAll(".tile").forEach(t=>t.onclick=()=>{
+      if(!live()||pos>=w.en.length||t.classList.contains("used"))return;
       if(t.dataset.c===w.en[pos]){cells[pos].textContent=t.dataset.c;t.classList.add("used");pos++;
-        if(pos===w.en.length){$("oline").classList.add("ok");say(w.en);idx++;later(show,1200)}}
-      else{miss++;$("score").textContent=`第 ${idx+1} / 5 個 · 點錯 ${miss} 次`;t.classList.remove("wrong");void t.offsetWidth;t.classList.add("wrong")}
+        if(pos===w.en.length){$("oline").classList.add("ok");say(w.en);idx++;setTimeout(show,1200)}}
+      else{miss++;score();t.classList.remove("wrong");void t.offsetWidth;t.classList.add("wrong")}
     });
   }
   show();
@@ -601,7 +664,7 @@ function gZombie(){
     h.up=true;h.tok++;h.el.tabIndex=0;h.el.classList.add("up");
     const t=h.tok;later(()=>{if(h.tok===t)down(h)},STAY);
   }
-  function newTarget(){let c;do{c=WORDS[Math.random()*WORDS.length|0]}while(c===target);target=c;$("zpic").textContent=c.pic;say(c.en)}
+  function newTarget(){let c;do{c=WORDS[Math.random()*WORDS.length|0]}while(c===target);target=c;$("zpic").innerHTML=c.pic;say(c.en)}
   holes.forEach(h=>h.el.onclick=()=>{
     if(g!==gen||!h.up)return;
     if(h.w===target){
@@ -618,7 +681,7 @@ function gZombie(){
 }
 
 /* Stage 3: 句型問答 Are you ___? */
-const ASKER="👩‍🏫";
+const ASKER=FACE.teacher;
 let sq=[],si=0,smiss=0;
 function sayThen(a,b){
   unlockAudio();
@@ -636,7 +699,7 @@ function showSQ(){
   const box=$("sqbox");
   if(si>=sq.length){
     if(smiss){box.innerHTML=`<div class="done"><p class="big">答錯 ${smiss} 次，要 8 題全對才能過關喔！</p><button class="btn" id="sqagain">再挑戰一次</button></div>`;$("sqagain").onclick=startSQ}
-    else{box.innerHTML=`<div class="done"><p class="stars">⭐⭐⭐</p><p class="big">8 題全對！遊戲區打開了，往下滑</p></div>`;unlock(4)}
+    else{box.innerHTML=`<div class="done"><p class="stars">⭐⭐⭐</p><p class="big">8 題全對！遊戲區打開了，往下滑</p></div>`;unlock(5)}
     return}
   const q=sq[si],ans=q.t==="ans";
   const right=ans?(q.yes?"yes":"no"):q.w.en;
@@ -667,17 +730,18 @@ $("sqbody").addEventListener("click",e=>{const b=e.target.closest(".pattern [dat
 function unlock(n,quiet){
   stage=Math.max(stage,n);renderSteps();
   if(n===2){$("s2").classList.remove("locked");$("lock2").hidden=true;$("s2body").hidden=false;buildSpell();if(!quiet)setTimeout(()=>$("s2").scrollIntoView({behavior:"smooth"}),900)}
-  if(n===3){$("sq").classList.remove("locked");$("lockq").hidden=true;$("sqbody").hidden=false;if(!$("sqbox").children.length)startSQ();if(!quiet){$("check").disabled=true;$("spell").classList.add("done");setTimeout(()=>$("sq").scrollIntoView({behavior:"smooth"}),900)}}
-  if(n===4){$("s3").classList.remove("locked");$("lock3").hidden=true;$("s3body").hidden=false;if(!$("game").children.length)startGame(gameId);if(!quiet)setTimeout(()=>$("s3").scrollIntoView({behavior:"smooth"}),1200)}
+  if(n===3){$("so").classList.remove("locked");$("locko").hidden=true;$("sobody").hidden=false;if(!$("obox").children.length)orderStage();if(!quiet){$("check").disabled=true;$("spell").classList.add("done");setTimeout(()=>$("so").scrollIntoView({behavior:"smooth"}),900)}}
+  if(n===4){$("sq").classList.remove("locked");$("lockq").hidden=true;$("sqbody").hidden=false;if(!$("sqbox").children.length)startSQ();if(!quiet)setTimeout(()=>$("sq").scrollIntoView({behavior:"smooth"}),1200)}
+  if(n===5){$("s3").classList.remove("locked");$("lock3").hidden=true;$("s3body").hidden=false;if(!$("game").children.length)startGame(gameId);if(!quiet)setTimeout(()=>$("s3").scrollIntoView({behavior:"smooth"}),1200)}
 }
 $("reset").onclick=()=>{
   stage=1;stopGame();sqGen++;$("game").innerHTML="";
-  ["s2","sq","s3"].forEach(s=>$(s).classList.add("locked"));$("lock2").hidden=$("lockq").hidden=$("lock3").hidden=false;$("s2body").hidden=$("sqbody").hidden=$("s3body").hidden=true;$("sqbox").innerHTML="";
+  ["s2","so","sq","s3"].forEach(s=>$(s).classList.add("locked"));$("lock2").hidden=$("locko").hidden=$("lockq").hidden=$("lock3").hidden=false;$("s2body").hidden=$("sobody").hidden=$("sqbody").hidden=$("s3body").hidden=true;$("sqbox").innerHTML="";oGen++;$("obox").innerHTML="";$("oscore").textContent="";
   spBusy=false;$("check").disabled=false;$("spell").classList.remove("done");$("spellMsg").textContent="";$("score").textContent="";
   backToStudy();renderSteps();window.scrollTo({top:0,behavior:"smooth"});preview();
 };
 /* 老師檢查模式：PREVIEW 設成 false 就恢復成要一關一關過；網址加 #teacher 也能打開 */
-const PREVIEW=true;
-function preview(){if(PREVIEW||location.hash==="#teacher"){$("teacher").hidden=false;unlock(2,true);unlock(3,true);unlock(4,true)}}
+const PREVIEW=false;
+function preview(){if(PREVIEW||location.hash==="#teacher"){$("teacher").hidden=false;unlock(2,true);unlock(3,true);unlock(4,true);unlock(5,true)}}
 renderCards(false);renderSteps();preview();
 </script>
