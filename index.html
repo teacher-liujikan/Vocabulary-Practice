@@ -57,6 +57,7 @@ section.locked{opacity:.55}
 section h2{margin:0;font-size:1.25rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .badge{font-family:var(--en);background:var(--sun);color:#3a2a00;border-radius:999px;width:32px;height:32px;display:inline-grid;place-items:center;font-weight:800}
 .teacher{margin:0;padding:10px 14px;border-radius:12px;background:var(--sun);color:#3a2a00;font-weight:700}
+.tag{font-size:.8rem;font-weight:700;color:var(--good);background:var(--good-bg);border-radius:999px;padding:2px 10px}
 .lockmsg{color:var(--soft);margin:0}
 .hint{margin:0;color:var(--soft)}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
@@ -245,18 +246,18 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </section>
 
   <section id="s2" class="locked">
-    <h2><span class="badge">2</span>寫進格子</h2>
-    <p class="lockmsg" id="lock2">🔒 先通過第 1 關小考才能開始。</p>
+    <h2><span class="badge">2</span>寫進格子<span class="tag">隨時可以練習</span></h2>
+    <p class="lockmsg" id="lock2" hidden></p>
     <div id="s2body" hidden>
-      <p class="hint">先按「✏️ 看筆順」看怎麼寫，再用手指或觸控筆照著數字和箭頭描一次（紅色第 1 筆、藍色第 2 筆、綠色第 3 筆），描好按「寫好了，檢查」，寫對了才會換下一個字。↶ 擦掉上一筆，🧽 整個字擦掉重寫。</p>
+      <p class="hint">先按「✏️ 看筆順」看怎麼寫，再用手指或觸控筆照著數字和箭頭描一次（紅色第 1 筆、藍色第 2 筆、綠色第 3 筆），描好按「寫好了，檢查」。想換字可以按「下一個字」。↶ 擦掉上一筆，🧽 整個字擦掉重寫。</p>
       <div class="spell" id="spell"></div>
-      <div class="row" style="margin-top:12px"><button class="btn" id="check">寫好了，檢查</button><span class="meter" id="spellProg"></span><p class="msg" id="spellMsg"></p></div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="check">寫好了，檢查</button><button class="btn ghost" id="skip">下一個字 ➜</button><span class="meter" id="spellProg"></span><p class="msg" id="spellMsg"></p></div>
     </div>
   </section>
 
   <section id="so" class="locked">
     <h2><span class="badge">3</span>字母排排站</h2>
-    <p class="lockmsg" id="locko">🔒 5 個字都描寫完才能開始。</p>
+    <p class="lockmsg" id="locko">🔒 先通過第 1 關小考才能開始。</p>
     <div id="sobody" class="gbody" hidden>
       <p class="hint">看圖聽發音，照順序點字母，把單字排在四線格上。5 個字都要一次排對才能過關喔！</p>
       <div id="obox"></div>
@@ -377,7 +378,10 @@ let stage=1;
 
 function renderSteps(){
   const names=["背單字","寫進格子","字母排排站","句型問答","遊戲區"];
-  $("steps").innerHTML=names.map((n,i)=>{const k=i+1;const c=k<stage?"done":k===stage?"on":"";return `<span class="step ${c}">${k<stage?"✔":k===stage?"✏️":"🔒"} ${n}</span>`}).join("");
+  $("steps").innerHTML=names.map((n,i)=>{const k=i+1;
+    if(k===2)return `<span class="step ${spDone?"done":"on"}">${spDone?"✔":"✏️"} ${n}</span>`;
+    const s=k===1?1:k-1,cur=stage===1?1:stage-1,c=s<cur?"done":s===cur?"on":"";
+    return `<span class="step ${c}">${s<cur?"✔":s===cur?"✏️":"🔒"} ${n}</span>`}).join("");
 }
 
 /* Stage 1: study cards + quiz */
@@ -390,7 +394,7 @@ $("startQuiz").onclick=()=>{renderCards(true);$("cards").hidden=true;$("s1ctl").
 function nextQ(){
   if(qi>=quizOrder.length){
     if(qMiss){$("quiz").innerHTML=`<p class="big">有答錯喔，再背一次再考！</p><button class="btn" id="again">回去背單字</button>`;$("again").onclick=backToStudy;return}
-    $("quiz").innerHTML=`<p class="big">🎉 5 題全對！第 1 關過關</p>`;unlock(2);return}
+    $("quiz").innerHTML=`<p class="big">🎉 5 題全對！第 1 關過關，字母排排站打開了</p>`;unlock(3);return}
   const w=quizOrder[qi];
   $("quiz").innerHTML=`<span class="meter">第 ${qi+1} / 5 題</span><div class="pic">${w.pic}</div><div class="zh">${w.zh}</div><div class="choices">${shuffle(WORDS).map(o=>`<button class="choice" data-w="${o.en}">${o.en}</button>`).join("")}</div><p class="msg" id="qmsg"></p>`;
   $("quiz").querySelectorAll(".choice").forEach(b=>b.onclick=()=>{
@@ -461,7 +465,7 @@ HW.check=function(strokes,F,want){
   const rk=HW.rank(r,F),i=rk.findIndex(e=>e[0]===want);return{ok:i<3&&rk[i][1]>=.45,rank:i,score:+rk[i][1].toFixed(2),top:rk.slice(0,3).map(e=>e[0]).join("")}};
 
 /* Stage 2: handwriting on the four-line grid. Strokes are stored in em so they survive resizing. */
-const HWROWS=[];let penSeen=false;
+const HWROWS=[];
 function hwF(strip){return parseFloat(getComputedStyle(strip).fontSize)}
 function hwSize(r){
   const F=hwF(r.strip),dpr=window.devicePixelRatio||1,w=r.strip.clientWidth,h=r.strip.clientHeight;
@@ -509,8 +513,8 @@ function hwDraw(r,F){
   r.strokes.forEach(st=>{c.beginPath();st.forEach((p,i)=>i?c.lineTo(p[0]*F,p[1]*F):c.moveTo(p[0]*F,p[1]*F));if(st.length===1)c.lineTo(st[0][0]*F+.1,st[0][1]*F);c.stroke()});
 }
 function hwReset(r){r.el.classList.remove("ok","bad");r.cells.forEach(c=>c.classList.remove("no"));r.msg.textContent=""}
-let spOrder=[],spi=0,spBusy=false;
-function buildSpell(){spOrder=shuffle(WORDS);spi=0;spBusy=false;spellShow()}
+let spOrder=[],spi=0,spBusy=false,spDone=false;
+function buildSpell(){spOrder=shuffle(WORDS);spi=0;spBusy=false;spDone=false;spellShow()}
 function spellShow(){
   HWROWS.length=0;const w=spOrder[spi];
   $("spellProg").textContent=`第 ${spi+1} / ${spOrder.length} 個`;$("spellMsg").textContent="";$("check").disabled=false;
@@ -522,19 +526,26 @@ function spellShow(){
     const r={el,w:el.dataset.w,strip,can,gcan,gctx:gcan.getContext("2d"),ctx:can.getContext("2d"),strokes:[],cells:[...el.querySelectorAll(".hwcell")],msg:el.querySelector(".rowmsg"),cur:null,pid:null};
     HWROWS.push(r);
     const pt=e=>{const b=can.getBoundingClientRect(),F=hwF(strip);return[(e.clientX-b.left)/F,(e.clientY-b.top)/F]};
-    can.addEventListener("pointerdown",e=>{
-      if(e.pointerType==="pen")penSeen=true;
-      if(penSeen&&e.pointerType==="touch")return; /* ignore the palm once a pen is in use */
-      if(r.cur||spBusy||$("spell").classList.contains("done"))return;
-      e.preventDefault();try{can.setPointerCapture(e.pointerId)}catch(_){}
-      r.pid=e.pointerId;r.cur=[pt(e)];r.strokes.push(r.cur);hwReset(r);$("spellMsg").textContent="";hwDraw(r,hwF(strip));
-    });
-    can.addEventListener("pointermove",e=>{
-      if(!r.cur||e.pointerId!==r.pid)return;e.preventDefault();
-      const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];evs.forEach(ev=>r.cur.push(pt(ev)));hwDraw(r,hwF(strip));
-    });
-    const end=e=>{if(e.pointerId===r.pid){r.cur=null;r.pid=null}};
-    can.addEventListener("pointerup",end);can.addEventListener("pointercancel",end);
+    const start=(id,e,isPen)=>{if(r.cur||spBusy)return false;r.pid=id;r.pen=isPen;r.cur=[pt(e)];r.strokes.push(r.cur);hwReset(r);$("spellMsg").textContent="";hwDraw(r,hwF(strip));return true};
+    const move=(id,list)=>{if(!r.cur||id!==r.pid)return;list.forEach(ev=>r.cur.push(pt(ev)));hwDraw(r,hwF(strip))};
+    const stop=id=>{if(id===r.pid){r.cur=null;r.pid=null;r.pen=false}};
+    /* stop the page from scrolling while a finger is on the writing strip (iPad Safari) */
+    ["touchstart","touchmove"].forEach(t=>can.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+    if(window.PointerEvent){
+      can.addEventListener("pointerdown",e=>{
+        if(e.pointerType==="touch"&&r.cur&&r.pen)return; /* palm resting while the pen writes */
+        if(r.cur&&r.pid!==e.pointerId&&!r.pen&&e.pointerType==="pen"){stop(r.pid)} /* pen takes over from a palm touch */
+        if(start(e.pointerId,e,e.pointerType==="pen")){e.preventDefault();try{can.setPointerCapture(e.pointerId)}catch(_){}}
+      });
+      can.addEventListener("pointermove",e=>{if(e.pointerId!==r.pid)return;e.preventDefault();move(e.pointerId,e.getCoalescedEvents&&e.getCoalescedEvents().length?e.getCoalescedEvents():[e])});
+      ["pointerup","pointercancel","lostpointercapture"].forEach(t=>can.addEventListener(t,e=>stop(e.pointerId)));
+    }else{
+      can.addEventListener("touchstart",e=>{const t=e.changedTouches[0];start("t"+t.identifier,t,t.touchType==="stylus")});
+      can.addEventListener("touchmove",e=>{[...e.changedTouches].forEach(t=>move("t"+t.identifier,[t]))});
+      ["touchend","touchcancel"].forEach(n=>can.addEventListener(n,e=>[...e.changedTouches].forEach(t=>stop("t"+t.identifier))));
+      can.addEventListener("mousedown",e=>start("m",e,false));
+      window.addEventListener("mousemove",e=>move("m",[e]));window.addEventListener("mouseup",()=>stop("m"));
+    }
     el.querySelector('[data-act="undo"]').onclick=()=>{r.strokes.pop();hwReset(r);hwDraw(r,hwF(strip))};
     el.querySelector('[data-act="clear"]').onclick=()=>{r.strokes.length=0;hwReset(r);hwDraw(r,hwF(strip))};
     el.querySelector("[data-say]").onclick=()=>say(r.w);
@@ -543,19 +554,33 @@ function spellShow(){
   });
 }
 window.addEventListener("resize",()=>HWROWS.forEach(hwSize));
+$("skip").onclick=()=>{spBusy=false;spi=(spi+1)%spOrder.length;spellShow()};
 let hwReady=null;
 function hwPrepare(){if(!hwReady)hwReady=document.fonts.load('40px "EngTRESS A"').catch(()=>{}).then(()=>HW.build());return hwReady}
+/* share of the guide strokes (sampled) that the child's ink passes close to; units: em of the strip */
+function hwCover(r,k,strokes){
+  const ch=r.w[k],list=STROKES[ch];if(!list)return 0;
+  const F=hwF(r.strip),map=hwMap(r,k),gp=[];
+  list.forEach(st=>{const pts=st.map(map).map(p=>[p[0]/F,p[1]/F]);for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(d/.04));for(let j=0;j<n;j++)gp.push([a[0]+(b[0]-a[0])*j/n,a[1]+(b[1]-a[1])*j/n])}});
+  const segs=[];strokes.forEach(st=>{if(st.length===1)segs.push([st[0],st[0]]);for(let i=1;i<st.length;i++)segs.push([st[i-1],st[i]])});
+  const R=.13;let hit=0;
+  for(const p of gp){for(const[a,b]of segs){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));if(Math.hypot(a[0]+dx*t-p[0],a[1]+dy*t-p[1])<R){hit++;break}}}
+  return gp.length?hit/gp.length:0;
+}
 $("check").onclick=async()=>{
   if(spBusy)return;await hwPrepare();
   const r=HWROWS[0],m=$("spellMsg"),n=r.w.length,F=hwF(r.strip),pad=.3,cw=(r.strip.clientWidth/F-2*pad)/n,groups=Array.from({length:n},()=>[]);
   r.strokes.forEach(st=>{let a=1e9,b=-1e9;st.forEach(p=>{a=Math.min(a,p[0]);b=Math.max(b,p[0])});const k=Math.max(0,Math.min(n-1,Math.floor(((a+b)/2-pad)/cw)));groups[k].push(st.map(p=>[p[0]*100,p[1]*100]))});
   let right=true,empty=0;
-  groups.forEach((g,k)=>{const res=HW.check(g,100,r.w[k]);if(res.empty)empty++;r.cells[k].classList.toggle("no",!res.ok);if(!res.ok)right=false});
+  groups.forEach((g,k)=>{
+    let ok;if(!g.length){empty++;ok=false}
+    else ok=hwCover(r,k,g.map(st=>st.map(p=>[p[0]/100,p[1]/100])))>=.6||HW.check(g,100,r.w[k]).ok;
+    r.cells[k].classList.toggle("no",!ok);if(!ok)right=false});
   r.el.classList.toggle("ok",right);r.el.classList.toggle("bad",!right);
   if(!right){m.className="msg bad";m.textContent=empty===n?"還沒寫喔，照著淡淡的字描描看！":empty?"還有格子沒寫完喔！":"紅色的格子再描一次，按 🧽 可以擦掉";return}
   spBusy=true;$("check").disabled=true;say(r.w);m.className="msg good";
   if(spi+1<spOrder.length){m.textContent="寫對了！下一個～";setTimeout(()=>{if(!spBusy)return;spi++;spBusy=false;spellShow()},1400)}
-  else{m.textContent="🎉 5 個字都寫對了！下一關打開了，往下滑";$("spellProg").textContent="完成！";unlock(3)}
+  else{m.textContent="🎉 5 個字都描完了，好棒！";$("spellProg").textContent="完成！";spDone=true;renderSteps()}
 };
 
 /* Stage 3: game menu */
@@ -753,9 +778,9 @@ function showSQ(){
 $("sqbody").addEventListener("click",e=>{const b=e.target.closest(".pattern [data-say]");if(b)say(b.dataset.say)});
 
 function unlock(n,quiet){
-  stage=Math.max(stage,n);renderSteps();
-  if(n===2){$("s2").classList.remove("locked");$("lock2").hidden=true;$("s2body").hidden=false;buildSpell();if(!quiet)setTimeout(()=>$("s2").scrollIntoView({behavior:"smooth"}),900)}
-  if(n===3){$("so").classList.remove("locked");$("locko").hidden=true;$("sobody").hidden=false;if(!$("obox").children.length)orderStage();if(!quiet){$("check").disabled=true;$("spell").classList.add("done");setTimeout(()=>$("so").scrollIntoView({behavior:"smooth"}),900)}}
+  if(n!==2)stage=Math.max(stage,n);renderSteps();
+  if(n===2){$("s2").classList.remove("locked");$("lock2").hidden=true;$("s2body").hidden=false;if(!HWROWS.length)buildSpell();if(!quiet)setTimeout(()=>$("s2").scrollIntoView({behavior:"smooth"}),900)}
+  if(n===3){$("so").classList.remove("locked");$("locko").hidden=true;$("sobody").hidden=false;if(!$("obox").children.length)orderStage();if(!quiet){setTimeout(()=>$("so").scrollIntoView({behavior:"smooth"}),900)}}
   if(n===4){$("sq").classList.remove("locked");$("lockq").hidden=true;$("sqbody").hidden=false;if(!$("sqbox").children.length)startSQ();if(!quiet)setTimeout(()=>$("sq").scrollIntoView({behavior:"smooth"}),1200)}
   if(n===5){$("s3").classList.remove("locked");$("lock3").hidden=true;$("s3body").hidden=false;if(!$("game").children.length)startGame(gameId);if(!quiet)setTimeout(()=>$("s3").scrollIntoView({behavior:"smooth"}),1200)}
 }
@@ -763,12 +788,12 @@ $("reset").onclick=()=>{
   stage=1;stopGame();sqGen++;$("game").innerHTML="";
   ["s2","so","sq","s3"].forEach(s=>$(s).classList.add("locked"));$("lock2").hidden=$("locko").hidden=$("lockq").hidden=$("lock3").hidden=false;$("s2body").hidden=$("sobody").hidden=$("sqbody").hidden=$("s3body").hidden=true;$("sqbox").innerHTML="";oGen++;$("obox").innerHTML="";$("oscore").textContent="";
   spBusy=false;$("check").disabled=false;$("spell").classList.remove("done");$("spellMsg").textContent="";$("score").textContent="";
-  backToStudy();renderSteps();window.scrollTo({top:0,behavior:"smooth"});preview();
+  HWROWS.length=0;unlock(2,true);backToStudy();renderSteps();window.scrollTo({top:0,behavior:"smooth"});preview();
 };
 /* 老師檢查模式：PREVIEW 設成 false 就恢復成要一關一關過；網址加 #teacher 也能打開 */
 const PREVIEW=false;
 function preview(){if(PREVIEW||location.hash==="#teacher"){$("teacher").hidden=false;unlock(2,true);unlock(3,true);unlock(4,true);unlock(5,true)}}
-renderCards(false);renderSteps();preview();
+renderCards(false);renderSteps();unlock(2,true);preview();
 
 //---------------------------------------------------------------------
 //
