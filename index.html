@@ -39,10 +39,12 @@ body{background:var(--paper);color:var(--ink);font-family:var(--zh);font-size:16
 header h1{font-family:var(--en);font-weight:400;font-size:clamp(2rem,7vw,2.8rem);line-height:1;margin:0;text-wrap:balance}
 header h1 span{font-family:var(--zh);font-size:.55em;font-weight:900;margin-left:.3em}
 header p{margin:6px 0 0;color:var(--soft)}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.ttl{min-width:0}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px}
+.ttl{min-width:0;flex:1 1 300px}
+.topbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
+.sndtip{margin:0;padding:10px 14px;border-radius:12px;background:var(--cyan-bg);color:var(--ink);font-weight:700;line-height:1.6}
 .qrbtn{flex:0 0 auto;font:inherit;font-weight:700;padding:8px 14px;border-radius:12px;border:2px solid var(--cyan);background:var(--card);color:var(--cyan);cursor:pointer}
-.qrwrap{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:color-mix(in srgb,#0b1622 60%,transparent);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.qrwrap{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(11,22,34,.6);background:color-mix(in srgb,#0b1622 60%,transparent);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .qrcard{background:var(--card);border-radius:20px;padding:22px;display:grid;justify-items:center;gap:12px;max-width:min(560px,100%);max-height:100%;overflow:auto;text-align:center}
 .qrt{margin:0;font-size:1.4rem;font-weight:900}
 .qrimg{background:#fff;padding:10px;border-radius:12px;width:min(70vh,440px,80vw);aspect-ratio:1;max-width:100%}
@@ -106,8 +108,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .hwcells{position:absolute;inset:0 .3em;display:flex}
 .hwcell{flex:1;position:relative}
 .hwcell+.hwcell{border-left:1.5px dashed var(--sep)}
-.hwcell.no{background:color-mix(in srgb,var(--bad) 18%,transparent)}
-.hwcell .hint{display:none;text-align:center;font-family:var(--en);line-height:1.4;color:color-mix(in srgb,var(--soft) 50%,transparent)}
+.hwcell.no{background:rgba(217,70,60,.18);background:color-mix(in srgb,var(--bad) 18%,transparent)}
+.hwcell .hint{display:none;text-align:center;font-family:var(--en);line-height:1.4;color:var(--rule);color:color-mix(in srgb,var(--soft) 50%,transparent)}
 .hwguide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .tool.demo{width:auto;padding:0 10px;font-size:.95rem;font-weight:700}
 .hwcan{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:1}
@@ -222,8 +224,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <header class="top">
     <div class="ttl"><h1>How do you feel?<span>心情單字闖關</span></h1>
     <p>先背熟 5 個單字、再描寫和排字母，全部過關才能玩遊戲！</p></div>
-    <button class="qrbtn" id="qrbtn" aria-haspopup="dialog">📱 QR Code</button>
+    <div class="topbtns"><button class="qrbtn" id="sndbtn">🔊 聲音測試</button><button class="qrbtn" id="qrbtn" aria-haspopup="dialog">📱 QR Code</button></div>
   </header>
+  <p class="sndtip" id="sndtip" hidden>聽到「happy」了嗎？沒聲音的話：① 把音量調大 ② iPad / iPhone 關掉靜音（側邊開關或控制中心的🔔）③ 檢查是不是連到藍牙耳機了 ④ 重新整理網頁再點一次。</p>
   <p class="teacher" id="teacher" hidden>👩‍🏫 老師檢查模式：全部關卡都已打開。學生請用沒有 #teacher 的網址（按右上角 QR Code）。</p>
   <div class="qrwrap" id="qrwrap" hidden role="dialog" aria-modal="true" aria-label="掃 QR Code 打開這個網頁">
     <div class="qrcard">
@@ -352,26 +355,46 @@ function decode(w){
   if(!BUF[w])BUF[w]=new Promise((res,rej)=>{try{const r=ctx.decodeAudioData(bytes(w).buffer,res,rej);if(r&&r.catch)r.catch(rej)}catch(e){rej(e)}});
   return BUF[w];
 }
+/* Sound. Apple devices (iPad/iPhone/Safari) play through one shared <audio> element that is
+   unlocked on the first tap; it also plays when the side switch is on silent, which Web Audio does not.
+   Other browsers use Web Audio, with the same <audio> element as a fallback. */
+const UA=navigator.userAgent;
+const IS_APPLE=/iP(hone|ad|od)/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1)||(/Safari/.test(UA)&&!/Chrome|Chromium|CriOS|FxiOS|Edg|Android/.test(UA));
+const EL=new Audio();EL.preload="auto";EL.setAttribute("playsinline","");EL.setAttribute("webkit-playsinline","");
+let unlocked=false,playTok=0;
+function blobURL(w){if(!BLOB[w]){try{BLOB[w]=URL.createObjectURL(new Blob([bytes(w)],{type:"audio/mpeg"}))}catch(e){BLOB[w]=SOUNDS[w]}}return BLOB[w]}
 function unlockAudio(){
   try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch(e){}
-  if(!ctx){const C=window.AudioContext||window.webkitAudioContext;if(C){ctx=new C();for(const w in SOUNDS)decode(w).catch(()=>{})}}
+  if(!unlocked){
+    unlocked=true;const tok=playTok;
+    try{EL.muted=true;EL.src=blobURL("happy");const p=EL.play();
+      const done=()=>{if(tok===playTok){try{EL.pause()}catch(e){}}EL.muted=false};
+      if(p&&p.then)p.then(done,()=>{EL.muted=false;unlocked=false});else done();
+    }catch(e){EL.muted=false;unlocked=false}
+  }
+  if(IS_APPLE)return;
+  if(!ctx){const C=window.AudioContext||window.webkitAudioContext;if(C){try{ctx=new C();for(const w in SOUNDS)decode(w).catch(()=>{})}catch(e){ctx=null}}}
   if(ctx&&ctx.state!=="running"){try{ctx.resume()}catch(e){}}
-  /* iOS: a silent buffer started inside the tap wakes the audio engine */
   try{const s=ctx.createBufferSource();s.buffer=ctx.createBuffer(1,1,22050);s.connect(ctx.destination);s.start(0)}catch(e){}
 }
-document.addEventListener("pointerdown",unlockAudio,{capture:true});
-document.addEventListener("keydown",unlockAudio,{capture:true});
-function say(w){
-  unlockAudio();
-  if(!ctx){playEl(w);return}
+["touchend","click","pointerdown","keydown"].forEach(t=>document.addEventListener(t,unlockAudio,{capture:true}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&ctx&&ctx.state!=="running"){try{ctx.resume()}catch(e){}}});
+function say(w,onEnd){
+  unlockAudio();playTok++;
+  try{if(cur){cur.onended=null;cur.stop()}}catch(e){}
+  if(IS_APPLE||!ctx||ctx.state!=="running"){playEl(w,onEnd);return}
   decode(w).then(buf=>{
-    try{if(cur)cur.stop()}catch(e){}
-    cur=ctx.createBufferSource();cur.buffer=buf;cur.connect(ctx.destination);cur.start(0);
-  }).catch(()=>playEl(w));
+    try{if(cur){cur.onended=null;cur.stop()}}catch(e){}
+    cur=ctx.createBufferSource();cur.buffer=buf;cur.connect(ctx.destination);if(onEnd)cur.onended=onEnd;cur.start(0);
+  }).catch(()=>playEl(w,onEnd));
 }
-function playEl(w){
-  try{if(!BLOB[w])BLOB[w]=URL.createObjectURL(new Blob([bytes(w)],{type:"audio/mpeg"}));
-    const a=new Audio(BLOB[w]);const p=a.play();if(p&&p.catch)p.catch(()=>tts(w))}catch(e){tts(w)}
+function playEl(w,onEnd){
+  try{
+    EL.onended=null;EL.pause();EL.muted=false;
+    const u=blobURL(w);if(EL.src!==u)EL.src=u;else{try{EL.currentTime=0}catch(e){}}
+    EL.onended=onEnd||null;
+    const p=EL.play();if(p&&p.catch)p.catch(()=>{tts(w);if(onEnd)setTimeout(onEnd,1200)});
+  }catch(e){tts(w);if(onEnd)setTimeout(onEnd,1200)}
 }
 function tts(w){try{const u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
 let stage=1;
@@ -733,11 +756,7 @@ function gZombie(){
 /* Stage 3: 句型問答 Are you ___? */
 const ASKER=FACE.teacher;
 let sq=[],si=0,smiss=0;
-function sayThen(a,b){
-  unlockAudio();
-  if(ctx){decode(a).then(buf=>{say(a);later2(()=>say(b),buf.duration*1000+350)}).catch(()=>{say(a);later2(()=>say(b),1500)})}
-  else{say(a);later2(()=>say(b),1500)}
-}
+function sayThen(a,b){const g=sqGen;say(a,()=>{if(g===sqGen)later2(()=>say(b),300)})}
 let sqGen=0;const later2=(fn,ms)=>{const g=sqGen;setTimeout(()=>{if(g===sqGen)fn()},ms)};
 function makeSQ(){
   const ans=shuffle(WORDS).slice(0,4).map((w,i)=>{const yes=i%2===0;return{t:"ans",w,yes,ask:yes?w:shuffle(WORDS.filter(x=>x!==w))[0]}});
@@ -3093,6 +3112,7 @@ var qrcode = function() {
     return qrcode;
 }));
 
+$("sndbtn").onclick=()=>{say("happy");$("sndtip").hidden=false;clearTimeout(window._sndT);window._sndT=setTimeout(()=>$("sndtip").hidden=true,12000)};
 /* QR Code for the page address (teacher hash stripped so students land in the normal version) */
 function pageURL(){return location.href.split("#")[0]}
 $("qrbtn").onclick=()=>{
